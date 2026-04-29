@@ -17,6 +17,7 @@
 #define TracyVkZoneTransient(c,x,y,z,w)
 #define TracyVkCollect(c,x)
 #define TracyVkCollectHost(c)
+#define TracyVkCollectHostLimit(c,x)
 
 #define TracyVkNamedZoneS(c,x,y,z,w,a)
 #define TracyVkNamedZoneCS(c,x,y,z,w,v,a)
@@ -249,6 +250,11 @@ public:
 
     void Collect( VkCommandBuffer cmdbuf )
     {
+        CollectLimit( cmdbuf, 0 );
+    }
+
+    void CollectLimit( VkCommandBuffer cmdbuf, unsigned int maxCount )
+    {
         ZoneScopedC( Color::Red4 );
 
         const uint64_t head = m_head.load(std::memory_order_relaxed);
@@ -257,10 +263,38 @@ public:
 #ifdef TRACY_ON_DEMAND
         if( !GetProfiler().IsConnected() )
         {
-            cmdbuf ?
-                VK_FUNCTION_WRAPPER( vkCmdResetQueryPool( cmdbuf, m_query, 0, m_queryCount ) ) :
-                VK_FUNCTION_WRAPPER( vkResetQueryPool( m_device, m_query, 0, m_queryCount ) );
-            m_tail = head;
+            if( head - m_tail > m_queryCount )
+            {
+                cmdbuf ?
+                    VK_FUNCTION_WRAPPER( vkCmdResetQueryPool( cmdbuf, m_query, 0, m_queryCount ) ) :
+                    VK_FUNCTION_WRAPPER( vkResetQueryPool( m_device, m_query, 0, m_queryCount ) );
+                m_tail = head;
+            }
+            else
+            {
+                unsigned int remaining = maxCount;
+                do
+                {
+                    const unsigned int disconnectedWrappedTail = (unsigned int)( m_tail % m_queryCount );
+                    unsigned int disconnectedCnt = (unsigned int)( head - m_tail );
+                    if( disconnectedWrappedTail + disconnectedCnt > m_queryCount )
+                    {
+                        disconnectedCnt = m_queryCount - disconnectedWrappedTail;
+                    }
+                    if( maxCount != 0 && disconnectedCnt > remaining )
+                    {
+                        disconnectedCnt = remaining;
+                    }
+                    if( disconnectedCnt == 0 ) break;
+
+                    cmdbuf ?
+                        VK_FUNCTION_WRAPPER( vkCmdResetQueryPool( cmdbuf, m_query, disconnectedWrappedTail, disconnectedCnt ) ) :
+                        VK_FUNCTION_WRAPPER( vkResetQueryPool( m_device, m_query, disconnectedWrappedTail, disconnectedCnt ) );
+                    m_tail += disconnectedCnt;
+                    if( maxCount != 0 ) remaining -= disconnectedCnt;
+                }
+                while( maxCount == 0 && m_tail != head );
+            }
             m_oldCnt = 0;
             int64_t tgpu;
             if( m_timeDomain != VK_TIME_DOMAIN_DEVICE_EXT ) Calibrate( m_device, m_prevCalibration, tgpu );
@@ -287,6 +321,12 @@ public:
             }
         }
 
+        if( maxCount != 0 && cnt > maxCount )
+        {
+            cnt = maxCount;
+        }
+
+        if( cnt == 0 ) return;
 
         VK_FUNCTION_WRAPPER( vkGetQueryPoolResults( m_device, m_query, wrappedTail, cnt, sizeof( int64_t ) * m_queryCount * 2, m_res, sizeof( int64_t ) * 2, VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT ) );
 
@@ -361,11 +401,14 @@ private:
         };
         uint64_t ts[2];
         uint64_t deviation;
+        uint32_t attempts = 0;
+        constexpr uint32_t MaxCalibrationAttempts = 8;
         do
         {
             m_vkGetCalibratedTimestampsEXT( device, 2, spec, ts, &deviation );
+            attempts++;
         }
-        while( deviation > m_deviation );
+        while( deviation > m_deviation && attempts < MaxCalibrationAttempts );
 
 #if defined _WIN32
         tGpu = ts[0];
@@ -727,6 +770,7 @@ using TracyVkCtx = tracy::VkCtx*;
 #endif
 #define TracyVkCollect( ctx, cmdbuf ) ctx->Collect( cmdbuf );
 #define TracyVkCollectHost( ctx ) ctx->Collect( VK_NULL_HANDLE );
+#define TracyVkCollectHostLimit( ctx, maxCount ) ctx->CollectLimit( VK_NULL_HANDLE, maxCount );
 
 #ifdef TRACY_HAS_CALLSTACK
 #  define TracyVkNamedZoneS( ctx, varname, cmdbuf, name, depth, active ) static constexpr tracy::SourceLocationData TracyConcat(__tracy_gpu_source_location,TracyLine) { name, TracyFunction,  TracyFile, (uint32_t)TracyLine, 0 }; tracy::VkCtxScope varname( ctx, &TracyConcat(__tracy_gpu_source_location,TracyLine), cmdbuf, depth, active );

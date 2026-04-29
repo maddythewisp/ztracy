@@ -26,6 +26,7 @@ extern fn ztracy_vk_context_host_calibrated(
 extern fn ztracy_vk_context_destroy(context: ztracy_vk_context) void;
 extern fn ztracy_vk_context_name(context: ztracy_vk_context, name: [*]const u8, name_len: usize) void;
 extern fn ztracy_vk_context_collect(context: ztracy_vk_context, command_buffer: usize) void;
+extern fn ztracy_vk_context_collect_host_limit(context: ztracy_vk_context, max_count: u32) void;
 
 extern fn ztracy_vk_zone_begin(
     context: ztracy_vk_context,
@@ -95,6 +96,10 @@ pub const VkContext = struct {
 
     pub inline fn collect(self: *VkContext, command_buffer: usize) void {
         ztracy_vk_context_collect(self.handle, command_buffer);
+    }
+
+    pub inline fn collectHostLimit(self: *VkContext, max_count: u32) void {
+        ztracy_vk_context_collect_host_limit(self.handle, max_count);
     }
 
     pub inline fn zone(self: *VkContext, comptime src: Src, command_buffer: usize, comptime label: [:0]const u8) VkZone {

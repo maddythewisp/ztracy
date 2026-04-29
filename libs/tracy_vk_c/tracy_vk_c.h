@@ -29,6 +29,7 @@ ztracy_vk_context ztracy_vk_context_host_calibrated(
 void ztracy_vk_context_destroy(ztracy_vk_context context);
 void ztracy_vk_context_name(ztracy_vk_context context, const char* name, size_t name_len);
 void ztracy_vk_context_collect(ztracy_vk_context context, uintptr_t command_buffer);
+void ztracy_vk_context_collect_host_limit(ztracy_vk_context context, uint32_t max_count);
 
 ztracy_vk_zone ztracy_vk_zone_begin(
     ztracy_vk_context context,

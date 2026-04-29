@@ -59,13 +59,23 @@ pub const ZoneCtx = struct {
     }
 };
 
-inline fn initZone(comptime src: Src, name: ?[*:0]const u8, color: u32, depth: c_int) ZoneCtx {
+inline fn initZone(
+    comptime src: Src,
+    comptime name: ?[*:0]const u8,
+    comptime color: u32,
+    comptime depth: c_int,
+) ZoneCtx {
     // Tracy uses pointer identity to identify contexts.
-    // The `src` parameter being comptime ensures that
-    // each zone gets its own unique global location for this
-    // struct.
+    // The comptime parameters ensure that each zone gets its
+    // own unique static source-location record.
     const static = struct {
-        var loc: c.___tracy_source_location_data = undefined;
+        const loc: c.___tracy_source_location_data = .{
+            .name = name,
+            .function = src.fn_name.ptr,
+            .file = src.file.ptr,
+            .line = src.line,
+            .color = color,
+        };
 
         // Ensure that a unique struct type is generated for each unique `src`. See
         // https://github.com/ziglang/zig/issues/18816
@@ -73,13 +83,6 @@ inline fn initZone(comptime src: Src, name: ?[*:0]const u8, color: u32, depth: c
             // https://github.com/ziglang/zig/issues/19274
             _ = @sizeOf(@TypeOf(src));
         }
-    };
-    static.loc = .{
-        .name = name,
-        .function = src.fn_name.ptr,
-        .file = src.file.ptr,
-        .line = src.line,
-        .color = color,
     };
 
     const zone = if (has_callstack_support)
@@ -95,7 +98,7 @@ inline fn initZone(comptime src: Src, name: ?[*:0]const u8, color: u32, depth: c
     }
 }
 
-pub inline fn SetThreadName(name: [*:0]const u8) void {
+pub inline fn SetThreadName(comptime name: [*:0]const u8) void {
     c.___tracy_set_thread_name(name);
 }
 
@@ -106,25 +109,25 @@ pub inline fn IsConnected() bool {
 pub inline fn Zone(comptime src: Src) ZoneCtx {
     return initZone(src, null, 0, callstack_depth);
 }
-pub inline fn ZoneN(comptime src: Src, name: [*:0]const u8) ZoneCtx {
+pub inline fn ZoneN(comptime src: Src, comptime name: [*:0]const u8) ZoneCtx {
     return initZone(src, name, 0, callstack_depth);
 }
-pub inline fn ZoneC(comptime src: Src, color: u32) ZoneCtx {
+pub inline fn ZoneC(comptime src: Src, comptime color: u32) ZoneCtx {
     return initZone(src, null, color, callstack_depth);
 }
-pub inline fn ZoneNC(comptime src: Src, name: [*:0]const u8, color: u32) ZoneCtx {
+pub inline fn ZoneNC(comptime src: Src, comptime name: [*:0]const u8, comptime color: u32) ZoneCtx {
     return initZone(src, name, color, callstack_depth);
 }
-pub inline fn ZoneS(comptime src: Src, depth: i32) ZoneCtx {
+pub inline fn ZoneS(comptime src: Src, comptime depth: i32) ZoneCtx {
     return initZone(src, null, 0, depth);
 }
-pub inline fn ZoneNS(comptime src: Src, name: [*:0]const u8, depth: i32) ZoneCtx {
+pub inline fn ZoneNS(comptime src: Src, comptime name: [*:0]const u8, comptime depth: i32) ZoneCtx {
     return initZone(src, name, 0, depth);
 }
-pub inline fn ZoneCS(comptime src: Src, color: u32, depth: i32) ZoneCtx {
+pub inline fn ZoneCS(comptime src: Src, comptime color: u32, comptime depth: i32) ZoneCtx {
     return initZone(src, null, color, depth);
 }
-pub inline fn ZoneNCS(comptime src: Src, name: [*:0]const u8, color: u32, depth: i32) ZoneCtx {
+pub inline fn ZoneNCS(comptime src: Src, comptime name: [*:0]const u8, comptime color: u32, comptime depth: i32) ZoneCtx {
     return initZone(src, name, color, depth);
 }
 
@@ -185,56 +188,56 @@ pub inline fn SecureFreeS(ptr: ?*const anyopaque, depth: c_int) void {
     }
 }
 
-pub inline fn AllocN(ptr: ?*const anyopaque, size: usize, name: [*:0]const u8) void {
+pub inline fn AllocN(ptr: ?*const anyopaque, size: usize, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_alloc_callstack_named(ptr, size, callstack_depth, 0, name);
     } else {
         c.___tracy_emit_memory_alloc_named(ptr, size, 0, name);
     }
 }
-pub inline fn FreeN(ptr: ?*const anyopaque, name: [*:0]const u8) void {
+pub inline fn FreeN(ptr: ?*const anyopaque, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_free_callstack_named(ptr, callstack_depth, 0, name);
     } else {
         c.___tracy_emit_memory_free_named(ptr, 0, name);
     }
 }
-pub inline fn SecureAllocN(ptr: ?*const anyopaque, size: usize, name: [*:0]const u8) void {
+pub inline fn SecureAllocN(ptr: ?*const anyopaque, size: usize, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_alloc_callstack_named(ptr, size, callstack_depth, 1, name);
     } else {
         c.___tracy_emit_memory_alloc_named(ptr, size, 1, name);
     }
 }
-pub inline fn SecureFreeN(ptr: ?*const anyopaque, name: [*:0]const u8) void {
+pub inline fn SecureFreeN(ptr: ?*const anyopaque, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_free_callstack_named(ptr, callstack_depth, 1, name);
     } else {
         c.___tracy_emit_memory_free_named(ptr, 1, name);
     }
 }
-pub inline fn AllocNS(ptr: ?*const anyopaque, size: usize, depth: c_int, name: [*:0]const u8) void {
+pub inline fn AllocNS(ptr: ?*const anyopaque, size: usize, depth: c_int, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_alloc_callstack_named(ptr, size, depth, 0, name);
     } else {
         c.___tracy_emit_memory_alloc_named(ptr, size, 0, name);
     }
 }
-pub inline fn FreeNS(ptr: ?*const anyopaque, depth: c_int, name: [*:0]const u8) void {
+pub inline fn FreeNS(ptr: ?*const anyopaque, depth: c_int, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_free_callstack_named(ptr, depth, 0, name);
     } else {
         c.___tracy_emit_memory_free_named(ptr, 0, name);
     }
 }
-pub inline fn SecureAllocNS(ptr: ?*const anyopaque, size: usize, depth: c_int, name: [*:0]const u8) void {
+pub inline fn SecureAllocNS(ptr: ?*const anyopaque, size: usize, depth: c_int, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_alloc_callstack_named(ptr, size, depth, 1, name);
     } else {
         c.___tracy_emit_memory_alloc_named(ptr, size, 1, name);
     }
 }
-pub inline fn SecureFreeNS(ptr: ?*const anyopaque, depth: c_int, name: [*:0]const u8) void {
+pub inline fn SecureFreeNS(ptr: ?*const anyopaque, depth: c_int, comptime name: [*:0]const u8) void {
     if (has_callstack_support) {
         c.___tracy_emit_memory_free_callstack_named(ptr, depth, 1, name);
     } else {
@@ -245,20 +248,20 @@ pub inline fn SecureFreeNS(ptr: ?*const anyopaque, depth: c_int, name: [*:0]cons
 pub inline fn Message(text: []const u8) void {
     c.___tracy_emit_message(text.ptr, text.len, callstack_depth);
 }
-pub inline fn MessageL(text: [*:0]const u8, color: u32) void {
-    c.___tracy_emit_messageL(text, color, callstack_depth);
+pub inline fn MessageL(comptime text: [*:0]const u8) void {
+    c.___tracy_emit_messageL(text, callstack_depth);
 }
 pub inline fn MessageC(text: []const u8, color: u32) void {
     c.___tracy_emit_messageC(text.ptr, text.len, color, callstack_depth);
 }
-pub inline fn MessageLC(text: [*:0]const u8, color: u32) void {
+pub inline fn MessageLC(comptime text: [*:0]const u8, color: u32) void {
     c.___tracy_emit_messageLC(text, color, callstack_depth);
 }
 pub inline fn MessageS(text: []const u8, depth: c_int) void {
     const inner_depth: c_int = if (has_callstack_support) depth else 0;
     c.___tracy_emit_message(text.ptr, text.len, inner_depth);
 }
-pub inline fn MessageLS(text: [*:0]const u8, depth: c_int) void {
+pub inline fn MessageLS(comptime text: [*:0]const u8, depth: c_int) void {
     const inner_depth: c_int = if (has_callstack_support) depth else 0;
     c.___tracy_emit_messageL(text, inner_depth);
 }
@@ -266,7 +269,7 @@ pub inline fn MessageCS(text: []const u8, color: u32, depth: c_int) void {
     const inner_depth: c_int = if (has_callstack_support) depth else 0;
     c.___tracy_emit_messageC(text.ptr, text.len, color, inner_depth);
 }
-pub inline fn MessageLCS(text: [*:0]const u8, color: u32, depth: c_int) void {
+pub inline fn MessageLCS(comptime text: [*:0]const u8, color: u32, depth: c_int) void {
     const inner_depth: c_int = if (has_callstack_support) depth else 0;
     c.___tracy_emit_messageLC(text, color, inner_depth);
 }
@@ -287,20 +290,20 @@ pub inline fn FrameImage(image: ?*const anyopaque, width: u16, height: u16, offs
     c.___tracy_emit_frame_image(image, width, height, offset, flip);
 }
 
-pub inline fn FiberEnter(name: [*:0]const u8) void {
+pub inline fn FiberEnter(comptime name: [*:0]const u8) void {
     c.___tracy_fiber_enter(name);
 }
 pub inline fn FiberLeave() void {
     c.___tracy_fiber_leave();
 }
 
-pub inline fn PlotF(name: [*:0]const u8, val: f64) void {
+pub inline fn PlotF(comptime name: [*:0]const u8, val: f64) void {
     c.___tracy_emit_plot(name, val);
 }
-pub inline fn PlotU(name: [*:0]const u8, val: u64) void {
+pub inline fn PlotU(comptime name: [*:0]const u8, val: u64) void {
     c.___tracy_emit_plot(name, @as(f64, @floatFromInt(val)));
 }
-pub inline fn PlotI(name: [*:0]const u8, val: i64) void {
+pub inline fn PlotI(comptime name: [*:0]const u8, val: i64) void {
     c.___tracy_emit_plot(name, @as(f64, @floatFromInt(val)));
 }
 pub inline fn AppInfo(text: []const u8) void {

@@ -59,6 +59,12 @@ extern "C" void ztracy_vk_context_collect(ztracy_vk_context context, uintptr_t c
         reinterpret_cast<VkCommandBuffer>(command_buffer));
 }
 
+extern "C" void ztracy_vk_context_collect_host_limit(ztracy_vk_context context, uint32_t max_count)
+{
+    if (!context) return;
+    static_cast<tracy::VkCtx*>(context)->CollectLimit(VK_NULL_HANDLE, max_count);
+}
+
 extern "C" ztracy_vk_zone ztracy_vk_zone_begin(
     ztracy_vk_context context,
     uintptr_t command_buffer,
