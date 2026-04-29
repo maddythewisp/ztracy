@@ -23,6 +23,10 @@ pub inline fn SetThreadName(name: [*:0]const u8) void {
     _ = name;
 }
 
+pub inline fn IsConnected() bool {
+    return false;
+}
+
 pub inline fn Zone(comptime src: Src) ZoneCtx {
     _ = src;
     return .{};
@@ -225,5 +229,82 @@ pub const TracyAllocator = struct {
 
     pub fn allocator(self: *TracyAllocator) std.mem.Allocator {
         return self.child_allocator;
+    }
+};
+
+pub const VkContext = struct {
+    pub inline fn initCalibrated(
+        instance: usize,
+        physical_device: usize,
+        device: usize,
+        queue: usize,
+        command_buffer: usize,
+        get_instance_proc_addr: usize,
+        get_device_proc_addr: usize,
+    ) VkContext {
+        _ = instance;
+        _ = physical_device;
+        _ = device;
+        _ = queue;
+        _ = command_buffer;
+        _ = get_instance_proc_addr;
+        _ = get_device_proc_addr;
+        return .{};
+    }
+
+    pub inline fn initHostCalibrated(
+        instance: usize,
+        physical_device: usize,
+        device: usize,
+        get_instance_proc_addr: usize,
+        get_device_proc_addr: usize,
+    ) VkContext {
+        _ = instance;
+        _ = physical_device;
+        _ = device;
+        _ = get_instance_proc_addr;
+        _ = get_device_proc_addr;
+        return .{};
+    }
+
+    pub inline fn deinit(self: *VkContext) void {
+        _ = self;
+    }
+
+    pub inline fn name(self: *VkContext, label: []const u8) void {
+        _ = self;
+        _ = label;
+    }
+
+    pub inline fn collect(self: *VkContext, command_buffer: usize) void {
+        _ = self;
+        _ = command_buffer;
+    }
+
+    pub inline fn zone(self: *VkContext, comptime src: Src, command_buffer: usize, comptime label: [:0]const u8) VkZone {
+        _ = self;
+        _ = src;
+        _ = command_buffer;
+        _ = label;
+        return .{};
+    }
+};
+
+pub const VkZone = struct {
+    pub inline fn begin(
+        context: *VkContext,
+        comptime src: Src,
+        command_buffer: usize,
+        comptime label: [:0]const u8,
+    ) VkZone {
+        _ = context;
+        _ = src;
+        _ = command_buffer;
+        _ = label;
+        return .{};
+    }
+
+    pub inline fn end(self: *VkZone) void {
+        _ = self;
     }
 };

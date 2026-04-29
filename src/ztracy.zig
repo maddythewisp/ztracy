@@ -19,10 +19,12 @@ pub const enabled = blk: {
 
 const stub = @import("stub.zig");
 const impl = @import("impl.zig");
+const vulkan = @import("vulkan.zig");
 
 pub const ZoneCtx = if (enabled) impl.ZoneCtx else stub.ZoneCtx;
 
 pub const SetThreadName = if (enabled) impl.SetThreadName else stub.SetThreadName;
+pub const IsConnected = if (enabled) impl.IsConnected else stub.IsConnected;
 
 pub const Zone = if (enabled) impl.Zone else stub.Zone;
 pub const ZoneN = if (enabled) impl.ZoneN else stub.ZoneN;
@@ -78,6 +80,9 @@ pub const PlotI = if (enabled) impl.PlotI else stub.PlotI;
 pub const AppInfo = if (enabled) impl.AppInfo else stub.AppInfo;
 
 pub const TracyAllocator = if (enabled) impl.TracyAllocator else stub.TracyAllocator;
+
+pub const VkContext = if (enabled) vulkan.VkContext else stub.VkContext;
+pub const VkZone = if (enabled) vulkan.VkZone else stub.VkZone;
 
 test {
     std.testing.refAllDecls(@This());

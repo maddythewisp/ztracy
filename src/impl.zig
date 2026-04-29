@@ -99,6 +99,10 @@ pub inline fn SetThreadName(name: [*:0]const u8) void {
     c.___tracy_set_thread_name(name);
 }
 
+pub inline fn IsConnected() bool {
+    return c.___tracy_connected() != 0;
+}
+
 pub inline fn Zone(comptime src: Src) ZoneCtx {
     return initZone(src, null, 0, callstack_depth);
 }

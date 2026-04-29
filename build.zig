@@ -30,6 +30,11 @@ pub fn build(b: *std.Build) void {
             "shared",
             "Build as shared library",
         ) orelse false,
+        .vulkan_include_path = b.option(
+            []const u8,
+            "vulkan_include_path",
+            "Path to Vulkan headers used by the Tracy Vulkan wrapper",
+        ) orelse "",
     };
 
     const options_step = b.addOptions();
@@ -77,12 +82,28 @@ pub fn build(b: *std.Build) void {
     }
 
     tracy.root_module.addIncludePath(b.path("libs/tracy/tracy"));
+    tracy.root_module.addIncludePath(b.path("libs/tracy"));
+    tracy.root_module.addIncludePath(b.path("libs/tracy_vk_c"));
     tracy.root_module.addCSourceFile(.{
         .file = b.path("libs/tracy/TracyClient.cpp"),
         .flags = &.{
             "-fno-sanitize=undefined",
         },
     });
+    if (options.enable_ztracy) {
+        if (options.vulkan_include_path.len == 0) {
+            @panic("vulkan_include_path is required when enable_ztracy=true");
+        }
+        tracy.root_module.addIncludePath(b.path(options.vulkan_include_path));
+        tracy.root_module.addCSourceFile(.{
+            .file = b.path("libs/tracy_vk_c/tracy_vk_c.cpp"),
+            .flags = &.{
+                "-std=c++20",
+                "-fno-sanitize=undefined",
+            },
+        });
+        tracy.root_module.addCMacro("TRACY_VK_USE_SYMBOL_TABLE", "");
+    }
 
     if (options.enable_ztracy) tracy.root_module.addCMacro("TRACY_ENABLE", "");
     if (options.enable_fibers) tracy.root_module.addCMacro("TRACY_FIBERS", "");
