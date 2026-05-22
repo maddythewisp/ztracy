@@ -35,6 +35,11 @@ pub fn build(b: *std.Build) void {
             "vulkan_include_path",
             "Path to Vulkan headers used by the Tracy Vulkan wrapper",
         ) orelse "",
+        .external_libcpp = b.option(
+            bool,
+            "external_libcpp",
+            "Skip auto-linking Zig's bundled libc++; consumer wires their own.",
+        ) orelse false,
     };
 
     const options_step = b.addOptions();
@@ -111,7 +116,23 @@ pub fn build(b: *std.Build) void {
 
     tracy.root_module.link_libc = true;
     if (target.result.abi != .msvc) {
-        tracy.root_module.link_libcpp = true;
+        // `external_libcpp=true` opts out of Zig's bundled libc++
+        // wiring. Setting `link_libcpp = true` here would also
+        // implicitly add Zig's `${ZIG_LIB}/libcxx/include` and
+        // `libcxxabi/include` via `-isystem` to every C++ TU in the
+        // consumer's build graph (Compilation derives `link_libcpp`
+        // from the union over all modules in the dependency
+        // closure), plus the full `-D_LIBCPP_ABI_VERSION`,
+        // `_LIBCPP_HARDENING_MODE`, `_LIBCPP_HAS_*` define block.
+        // That's incompatible with consumers that link a foreign
+        // libc++ (e.g. one shipped by a separately-built toolchain),
+        // where the two libc++ wrappers interfere via shared include
+        // guards. With `external_libcpp=true`, the caller is
+        // responsible for adding libc++/libc++abi/libunwind to this
+        // module's link inputs themselves.
+        if (!options.external_libcpp) {
+            tracy.root_module.link_libcpp = true;
+        }
     } else {
         tracy.root_module.addCMacro("fileno", "_fileno");
     }
