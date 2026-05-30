@@ -47,7 +47,14 @@ pub fn build(b: *std.Build) void {
     const translate_c = b.addTranslateC(.{
         .root_source_file = b.path("libs/tracy/tracy/TracyC.h"),
         .target = target,
-        .optimize = optimize,
+        // translate-c only turns the header into Zig binding declarations; the
+        // optimize level does not affect that output (the Tracy C client itself
+        // is compiled separately at `optimize`, below). Forwarding ReleaseFast
+        // here makes the build hand `zig translate-c` a clang-style `-Ofast`,
+        // which its arg parser misreads as the *zig* `-O` mode selector
+        // ("unrecognized optimization mode: 'fast'"). Pin to a mode that emits
+        // no breaking `-O` so ReleaseFast/ReleaseSmall builds translate cleanly.
+        .optimize = .Debug,
         .link_libc = true,
     });
     translate_c.addIncludePath(b.path("libs/tracy/tracy"));
