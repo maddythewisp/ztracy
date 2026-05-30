@@ -3355,7 +3355,13 @@ void Profiler::SendSourceLocationPayload( uint64_t _ptr )
 
     uint16_t len;
     memcpy( &len, ptr, sizeof( len ) );
-    assert( len > 2 );
+    // NUCLEUS: a legitimately AllocSourceLocation'd payload always stores
+    // sz >= 12, so len > 2 here. A len <= 2 means a static (non-alloc'd)
+    // source-location pointer was mis-routed into the allocated-payload path;
+    // skip it instead of asserting/aborting so the compositor still launches
+    // with Tracy enabled. Defensive workaround; the mis-routing root cause in
+    // the Nucleus GPU srcloc path is tracked separately.
+    if( len <= 2 ) return;
     len -= 2;
     ptr += 2;
 
